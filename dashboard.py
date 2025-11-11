@@ -1,4 +1,4 @@
-# dashboard.py
+# dashboard_en.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6,49 +6,48 @@ import joblib
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-# --- Configuration de la page ---
+# --- Page Configuration ---
 st.set_page_config(
-    page_title="Cortex Énergétique - POC OQII",
+    page_title="Cortex Energetics - OQII POC",
     page_icon="⚡",
     layout="wide"
 )
 
-# --- Fonctions utilitaires ---
+# --- Utility Functions ---
 @st.cache_data
 def load_data():
     try:
         df = pd.read_csv('usine_data.csv')
-        st.success("Fichier de données 'usine_data.csv' chargé avec succès.")
+        st.success("Data file 'usine_data.csv' loaded successfully.")
         return df
     except FileNotFoundError:
-        st.error("ERREUR : Le fichier 'usine_data.csv' est introuvable. Assurez-vous d'avoir lancé data_generator.py d'abord.")
-        st.stop() # Arrête l'exécution du script
+        st.error("ERROR: The file 'usine_data.csv' was not found. Please make sure you have run data_generator.py first.")
+        st.stop() # Stop script execution
 
 @st.cache_resource
 def load_model():
     try:
         model = joblib.load('energy_predictor.pkl')
-        st.success("Modèle 'energy_predictor.pkl' chargé avec succès.")
+        st.success("Model 'energy_predictor.pkl' loaded successfully.")
         return model
     except FileNotFoundError:
-        st.error("ERREUR : Le fichier 'energy_predictor.pkl' est introuvable. Assurez-vous d'avoir lancé model.py d'abord.")
-        st.stop() # Arrête l'exécution du script
+        st.error("ERROR: The file 'energy_predictor.pkl' was not found. Please make sure you have run model.py first.")
+        st.stop() # Stop script execution
 
 def predict_consumption(model, input_df):
     return model.predict(input_df)
 
-# --- Chargement des ressources ---
+# --- Load Resources ---
 df = load_data()
 model = load_model()
 df['timestamp'] = pd.to_datetime(df['timestamp'])
 
+# --- Dashboard Interface ---
+st.title("⚡ Cortex Energetics - Operational Dashboard")
+st.markdown("POC for OQ for Industrial Investments - Energy Cost Optimization")
 
-# --- Interface du Dashboard ---
-st.title("⚡ Cortex Énergétique - Tableau de Bord Opérationnel")
-st.markdown("POC pour OQ for Industrial Investments - Optimisation des Coûts Énergétiques")
-
-# --- KPIs en Haut ---
-st.header("📊 Indicateurs Clés de Performance (KPIs)")
+# --- Top KPIs ---
+st.header("📊 Key Performance Indicators (KPIs)")
 col1, col2, col3, col4 = st.columns(4)
 
 total_consumption = df['energy_consumption_kwh'].sum()
@@ -56,58 +55,59 @@ total_cost = (df['energy_consumption_kwh'] * df['energy_price_omr_per_kwh']).sum
 avg_temp = df['temperature'].mean()
 avg_production = df['production_rate'].mean()
 
-col1.metric("Consommation Totale (Période)", f"{total_consumption:,.0f} kWh")
-col2.metric("Coût Énergétique Total", f"{total_cost:,.2f} OMR")
-col3.metric("Température Moyenne", f"{avg_temp:.1f} °C")
-col4.metric("Taux de Production Moyen", f"{avg_production:.1f} %")
+col1.metric("Total Consumption (Period)", f"{total_consumption:,.0f} kWh")
+col2.metric("Total Energy Cost", f"{total_cost:,.2f} OMR")
+col3.metric("Average Temperature", f"{avg_temp:.1f} °C")
+col4.metric("Average Production Rate", f"{avg_production:.1f} %")
 
-# --- Section de Prédiction ---
-st.header("🔮 Simulateur de Coût Énergétique")
-st.markdown("Ajustez les paramètres pour prédire la consommation et le coût pour la prochaine heure.")
+# --- Prediction Section ---
+st.header("🔮 Energy Cost Simulator")
+st.markdown("Adjust the parameters to predict the consumption and cost for the next hour.")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    temp_input = st.slider("Température Extérieure (°C)", min_value=10, max_value=50, value=30)
-    prod_input = st.slider("Taux de Production (%)", min_value=0, max_value=100, value=80)
+    temp_input = st.slider("Outside Temperature (°C)", min_value=10, max_value=50, value=30)
+    prod_input = st.slider("Production Rate (%)", min_value=0, max_value=100, value=80)
 
 with col2:
-    hour_input = st.selectbox("Heure de la Journée", options=range(24), format_func=lambda x: f"{x:02d}:00")
-    dow_text_input = st.selectbox("Jour de la Semaine", options=["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"])
-    dow_map = {"Lundi": 0, "Mardi": 1, "Mercredi": 2, "Jeudi": 3, "Vendredi": 4, "Samedi": 5, "Dimanche": 6}
+    hour_input = st.selectbox("Hour of the Day", options=range(24), format_func=lambda x: f"{x:02d}:00")
+    dow_text_input = st.selectbox("Day of the Week", options=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+    dow_map = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
     dow_input = dow_map[dow_text_input]
 
-# Déterminer le prix de l'énergie
+# Determine energy price
 if 8 <= hour_input <= 11 or 17 <= hour_input <= 21:
-    price_input = 0.15 # Heures pleines
+    price_input = 0.15 # Peak hours
 else:
-    price_input = 0.08 # Heures creuses
+    price_input = 0.08 # Off-peak hours
 
-# Créer l'input pour le modèle et prédire
+# Create input for the model and predict
+# The order of columns must be IDENTICAL to the one used for training
 input_data = pd.DataFrame([{
     'temperature': temp_input,
     'production_rate': prod_input,
     'hour': hour_input,
-    'day_of_week': dow_input,
+    'day_of_week': dow_input, # <-- Use the number here
     'energy_price_omr_per_kwh': price_input
 }])
 
 predicted_consumption = predict_consumption(model, input_data)[0]
 predicted_cost = predicted_consumption * price_input
 
-st.subheader("Résultat de la Prédiction")
+st.subheader("Prediction Result")
 col1, col2 = st.columns(2)
-col1.metric("Consommation Prédite", f"{predicted_consumption:.2f} kWh")
-col2.metric("Coût Prédit", f"{predicted_cost:.4f} OMR")
+col1.metric("Predicted Consumption", f"{predicted_consumption:.2f} kWh")
+col2.metric("Predicted Cost", f"{predicted_cost:.4f} OMR")
 
-# --- Graphiques ---
-st.header("📈 Analyse Visuelle des Données")
+# --- Visual Analysis ---
+st.header("📈 Visual Data Analysis")
 
-# S'assurer que la colonne 'hour' existe
+# Ensure the 'hour' column exists for the correlation graph
 if 'hour' not in df.columns:
     df['hour'] = df['timestamp'].dt.hour
 
-# Sélectionner les colonnes pour la corrélation
+# Select only numeric columns for correlation
 correlation_features = [
     'temperature', 
     'production_rate', 
@@ -118,58 +118,53 @@ correlation_features = [
 ]
 numeric_df = df[correlation_features]
 
-# Graphique 1 : Consommation et Coût dans le temps
-st.subheader("Consommation Énergétique et Coût Temps Réel")
+# Graph 1: Consumption and Cost over time
+st.subheader("Real-Time Energy Consumption and Cost")
 fig1 = go.Figure()
-fig1.add_trace(go.Scatter(x=df['timestamp'], y=df['energy_consumption_kwh'], mode='lines', name='Consommation (kWh)', line=dict(color='blue')))
-fig1.add_trace(go.Scatter(x=df['timestamp'], y=df['energy_consumption_kwh'] * df['energy_price_omr_per_kwh'], mode='lines', name='Coût (OMR)', yaxis='y2', line=dict(color='red')))
+fig1.add_trace(go.Scatter(x=df['timestamp'], y=df['energy_consumption_kwh'], mode='lines', name='Consumption (kWh)', line=dict(color='blue')))
+fig1.add_trace(go.Scatter(x=df['timestamp'], y=df['energy_consumption_kwh'] * df['energy_price_omr_per_kwh'], mode='lines', name='Cost (OMR)', yaxis='y2', line=dict(color='red')))
 fig1.update_layout(
     xaxis_title='Date',
-    yaxis=dict(title='Consommation (kWh)', side='left'),
-    yaxis2=dict(title='Coût (OMR)', overlaying='y', side='right'),
+    yaxis=dict(title='Consumption (kWh)', side='left'),
+    yaxis2=dict(title='Cost (OMR)', overlaying='y', side='right'),
     legend=dict(x=0.01, y=0.99)
 )
 st.plotly_chart(fig1, use_container_width=True)
 
+# Graph 2: Correlation Analysis
+st.subheader("Correlation Matrix")
 
-# --- DÉBUT DE L'AJOUT ---
-
-# Graphique 2 : Analyse des Corrélations
-st.subheader("Matrice de Corrélation")
-
-# --- LÉGENDE POUR LA MATRICE DE CORRÉLATION ---
+# --- LEGEND FOR THE CORRELATION MATRIX ---
 st.markdown("""
-### 📖 Comment lire cette matrice ?
+### 📖 How to Read This Matrix?
 
-Cette carte de chaleur montre les relations entre les différentes variables. Elle vous aide à comprendre ce qui influence la consommation énergétique.
+This heatmap shows the relationships between different variables. It helps you understand what influences energy consumption.
 
-*   **Les Couleurs :**
-    *   **Rouge :** Corrélation **forte et positive**. Quand une variable augmente, l'autre a tendance à augmenter aussi. (Ex: Plus la production est élevée, plus la consommation est élevée).
-    *   **Bleu :** Corrélation **forte et négative**. Quand une variable augmente, l'autre a tendance à diminuer.
-    *   **Blanc :** Pas de corrélation linéaire évidente.
+*   **The Colors:**
+    *   **Red:** A **strong positive** correlation. When one variable goes up, the other tends to go up as well. (e.g., The higher the production, the higher the consumption).
+    *   **Blue:** A **strong negative** correlation. When one variable goes up, the other tends to go down.
+    *   **White:** No obvious linear correlation.
 
-*   **Comment l'interpréter :**
-    *   Regardez la ligne `energy_consumption_kwh` pour voir les facteurs qui influencent le plus votre consommation.
-    *   Une corrélation proche de **+1 ou -1** est très forte. Proche de **0**, elle est faible.
+*   **How to Interpret It:**
+    *   Look at the `energy_consumption_kwh` row to see the factors that most influence your consumption.
+    *   A correlation close to **+1 or -1** is very strong. Close to **0**, it is weak.
 """)
 
-# Création et affichage du graphique
+# Create and display the graph
 fig2 = go.Figure(data=go.Heatmap(
     z=numeric_df.corr(),
     x=numeric_df.columns,
     y=numeric_df.columns,
     colorscale='RdBu',
     zmid=0,
-    text=numeric_df.corr().round(2), # Affiche la valeur de la corrélation dans chaque case
+    text=numeric_df.corr().round(2), # Display the correlation value in each cell
     texttemplate="%{text}",
     textfont={"size": 10},
     hoverongaps=False
 ))
 fig2.update_layout(
-    title='Carte de Chaleur des Corrélations',
+    title='Correlation Heatmap',
     width=700,
     height=700
 )
 st.plotly_chart(fig2, use_container_width=True)
-
-# --- FIN DE L'AJOUT ---
